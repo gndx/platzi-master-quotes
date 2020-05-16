@@ -1,20 +1,42 @@
-// Include the Alexa SDK v2
 const Alexa = require("ask-sdk-core");
+const https = require('https');
 
-// The "LaunchRequest" intent handler - called when the skill is launched
+function httpGet() {
+  return new Promise(((resolve, reject) => {
+    let options = {
+      host: 'masterquote.herokuapp.com',
+      port: 443,
+      path: '/random',
+      method: 'GET',
+    }
+    const request = https.request(options, (response) => {
+      response.setEncoding('utf8');
+      let returnData = '';
+      response.on('data', (chunk) => {
+        returnData += chunk;
+      });
+      response.on('end', () => {
+        resolve(JSON.parse(returnData))
+      })
+      response.on('error', (error) => {
+        reject(error);
+      })
+    });
+    request.end();
+  }))
+}
+
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
     return handlerInput.requestEnvelope.request.type === "LaunchRequest";
   },
-  handle(handlerInput) {
-    const speechText = "Hello, Platzi Masters";
-
-    // Speak out the speechText via Alexa
-    return handlerInput.responseBuilder.speak(speechText).getResponse();
+  async handle(handlerInput) {
+    const response = await httpGet();
+    const message = `La frase celebre de ${response.results[0].name}, ${response.results[0].quote}`
+    return handlerInput.responseBuilder.speak(message).getResponse();
   }
 };
 
-// Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
   .addRequestHandlers(LaunchRequestHandler)
   .lambda();
